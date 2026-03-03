@@ -1,0 +1,121 @@
+Aqui tienes la guia completa. Este proyecto es considerablemente mas complejo que un Flutter app tipico porque tiene una libreria en Rust integrada mediante flutter_rust_bridge. Te lo divido en fases.
+Fase 1: Prerrequisitos
+1.1 Instalar Flutter SDK
+Ve a flutter.dev/install/windows y descarga el SDK
+Descomprime en una ruta sin espacios, por ejemplo: C:\flutter
+Agrega C:\flutter\bin al PATH del sistema:
+Busca "Variables de entorno" en Windows
+En Path (usuario), agrega C:\flutter\bin
+Verifica en PowerShell:
+flutter --version
+Necesitas Flutter compatible con Dart ^3.11.0 (Flutter 3.27+)
+1.2 Instalar Android Studio
+Descarga desde developer.android.com/studio
+Durante la instalacion, asegurate de incluir:
+Android SDK
+Android SDK Command-line Tools
+Android Emulator (opcional si usas telefono fisico)
+Abre Android Studio → SDK Manager → instala:
+Android SDK Platform 36
+Android Build-Tools 34.0.0
+NDK (Side by side)
+1.3 Instalar Java 17
+El proyecto requiere JavaVersion.VERSION_17. Android Studio suele incluir uno, pero verifica:
+java -version
+Si no tienes Java 17, descarga Temurin JDK 17 e instala.
+Luego configura en variables de entorno:
+JAVA_HOME = ruta de tu JDK 17 (ej: C:\Program Files\Eclipse Adoptium\jdk-17...)
+1.4 Instalar Rust
+Ve a rustup.rs y ejecuta el instalador
+En PowerShell, verifica:
+rustc --versioncargo --version
+Agrega el target para Android:
+rustup target add aarch64-linux-androidrustup target add armv7-linux-androideabirustup target add x86_64-linux-android
+1.5 Instalar flutter_rust_bridge_codegen
+cargo install flutter_rust_bridge_codegen
+Fase 2: Configurar el telefono Android
+En tu telefono, ve a Ajustes → Acerca del telefono
+Toca Numero de compilacion 7 veces para activar el modo desarrollador
+Ve a Ajustes → Opciones de desarrollador y activa:
+Depuracion USB
+(Opcional) Instalacion via USB
+Conecta el telefono por USB y acepta la ventana de confianza que aparece en el telefono
+Verifica que Flutter lo detecte:
+flutter devices
+Deberias ver tu dispositivo en la lista.
+Fase 3: Configurar el proyecto
+Abre PowerShell en la carpeta del proyecto:
+cd "c:\Users\maria\OneDrive - Universidad de los Andes\Semestre 7\Mobile Development\mangayomi-app-reference"
+3.1 Verificar entorno Flutter
+flutter doctor
+Todos los checks relevantes deben estar en verde (Flutter, Android toolchain, Connected device). El de Xcode/iOS puedes ignorarlo en Windows.
+3.2 Obtener dependencias
+flutter pub get
+3.3 Compilar la libreria Rust (paso critico)
+El proyecto usa rust_builder/ con cargokit, que compila Rust automaticamente durante el build de Flutter. Sin embargo, para asegurarte de que todo este listo:
+cd rust_buildercargo buildcd ..
+Fase 4: Ejecutar en el telefono
+4.1 Modo debug (para desarrollo y cambios)
+Con el telefono conectado:
+flutter run
+Si tienes multiples dispositivos, especifica el tuyo:
+flutter run -d <device_id>
+(el device_id lo ves con flutter devices)
+La primera compilacion tarda bastante (15-30 min) porque compila Rust. Las siguientes son mucho mas rapidas gracias al hot reload.
+4.2 Comandos utiles mientras desarrollas
+Una vez corriendo, en la terminal tienes:
+Tecla	Accion
+r	Hot reload — aplica cambios de UI al instante
+R	Hot restart — reinicia la app con los cambios
+q	Salir
+4.3 Modo release (APK para instalar definitivamente)
+Cuando quieras un APK instalable sin necesitar la PC:
+flutter build apk --release
+El APK queda en build/app/outputs/flutter-apk/app-release.apk. Puedes copiarlo al telefono e instalarlo directamente.
+Fase 5: Hacer cambios
+Los archivos de la app estan todos en lib/
+Edita cualquier archivo .dart y usa hot reload (r) para ver cambios al instante
+Si cambias archivos en rust/ (codigo Rust), necesitas recompilar: detén la app y vuelve a correr flutter run
+Si cambias modelos de base de datos en lib/models/, regenera el codigo:
+dart run build_runner build
+Posibles problemas comunes
+flutter doctor muestra error de licencias Android:
+flutter doctor --android-licenses
+Acepta todo con y.
+Error de NDK no encontrado:
+En Android Studio → SDK Manager → SDK Tools → instala NDK (Side by side) version recomendada.
+Error de Rust durante el build:
+Asegurate de tener el target de Android instalado (rustup target add aarch64-linux-android) y que ANDROID_NDK_HOME este configurado como variable de entorno apuntando a la carpeta NDK dentro de tu Android SDK.
+flutter pub get falla por dependencias de Git:
+Asegurate de tener Git instalado y en el PATH (git --version).
+
+
+
+# SI HAY ERRORES DE PERMISOS: 
+Opcion C: Mover el proyecto fuera de OneDrive (recomendada para desarrollo)
+# Crea una carpeta de desarrollo fuera de OneDrivemkdir C:\dev# Copia el proyectoxcopy "c:\Users\maria\OneDrive - Universidad de los Andes\Semestre 7\Mobile Development\mangayomi-app-reference" "C:\dev\mangayomi-app-reference" /E /I /H
+Luego abre C:\dev\mangayomi-app-reference en Cursor y trabaja desde ahi. Esta es la solucion mas limpia — OneDrive y el toolchain de Flutter/Rust no se llevan bien juntos porque ambos quieren controlar los archivos al mismo tiempo.
+Opcion D: Forzar permisos via PowerShell (si quieres quedarte en OneDrive)
+$path = "c:\Users\maria\OneDrive - Universidad de los Andes\Semestre 7\Mobile Development\mangayomi-app-reference\lib\l10n"$acl = Get-Acl $path$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($env:USERNAME, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")$acl.SetAccessRule($rule)Set-Acl $path $acl
+
+
+# Crear carpeta de desarrollo
+New-Item -ItemType Directory -Path "C:\dev" -Force
+
+# Copiar el proyecto completo
+Copy-Item -Path "c:\Users\maria\OneDrive - Universidad de los Andes\Semestre 7\Mobile Development\mangayomi-app-reference" -Destination "C:\dev\mangayomi-app-reference" -Recurse
+
+# Entrar al proyecto
+cd C:\dev\mangayomi-app-reference
+
+# Limpiar artefactos viejos del build
+flutter clean
+
+# Reinstalar dependencias
+flutter pub get
+
+Este error es facil de resolver. Flutter necesita crear symlinks (accesos directos de sistema) para los plugins, y Windows solo lo permite con el Modo Desarrollador activado.
+Corre esto en PowerShell para abrir la configuracion directamente:
+start ms-settings:developers
+Se abre una ventana de Configuracion. Activa el switch de "Modo de desarrollador" y confirma si te pregunta.
+Luego vuelve a correr:
